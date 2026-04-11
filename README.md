@@ -16,6 +16,14 @@ This repository now includes a first runnable scaffold for the selected Python-f
 - `/healthz` and `/readyz` probes
 - one deterministic escalation branch for sensitive flows
 
+## AWS next phase
+
+The current recommendation is a **hybrid AWS extension**, not a rewrite:
+- keep **LangGraph + provider abstraction + Qdrant** as the core app path;
+- use **Bedrock AgentCore** for ops/governance;
+- use **Bedrock Flows** only for selected visible approval workflows;
+- use **Knowledge Bases** only for selected managed-RAG corpora.
+
 ### Quick start
 
 1. Copy `.env.example` to `.env`
@@ -60,6 +68,9 @@ Sensitive flows now use a deterministic escalation path that ends generation ear
 | [C4 — Containers](./docs/architecture/c4-container.md) | Runtime blocks and integration boundaries |
 | [C4 — Components](./docs/architecture/c4-components-orchestrator.md) | Orchestration internals and control points |
 | [Agent Workflows](./docs/architecture/agent-workflows.md) | Collaborative autonomous agent flows |
+| [Bedrock AgentCore for Ops/Governance](./docs/architecture/bedrock-agentcore-ops-governance.md) | Recommended AWS governance extension |
+| [Optional Flows and Knowledge Bases](./docs/architecture/bedrock-flows-knowledge-bases.md) | Selective managed workflow and RAG additions |
 | [Selected OpenRouter Dev Profile](./docs/architecture/profile-langgraph-openrouter-free.md) | Zero-cost dev/demo profile |
 | [Modules](./docs/modules/README.md) | Domain/module boundaries in the modular monolith |
 | [API Sketch](./docs/api/README.md) | Main synchronous and internal endpoints |
+| [ADR 005](./docs/adr/005-bedrock-agentcore-for-ops-governance.md) | Why AgentCore is the recommended next AWS layer |
