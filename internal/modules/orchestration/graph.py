@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from langgraph.graph import END, START, StateGraph
 
-from internal.modules.orchestration.state import AssistState
+from internal.modules.orchestration.state import AssistState, Intent
 from internal.platform.openrouter.client import OpenRouterClient
 from internal.platform.qdrant.adapter import QdrantAdapter
 
@@ -14,12 +14,32 @@ class AssistGraphFactory:
 
     def build(self):
         builder = StateGraph(AssistState)
+        builder.add_node("guardrail_check", self.guardrail_check)
+        builder.add_node("classify_intent", self.classify_intent)
         builder.add_node("retrieve_context", self.retrieve_context)
         builder.add_node("draft_answer", self.draft_answer)
-        builder.add_edge(START, "retrieve_context")
+        builder.add_edge(START, "guardrail_check")
+        builder.add_edge("guardrail_check", "classify_intent")
+        builder.add_edge("classify_intent", "retrieve_context")
         builder.add_edge("retrieve_context", "draft_answer")
         builder.add_edge("draft_answer", END)
         return builder.compile()
+
+    def guardrail_check(self, state: AssistState) -> AssistState:
+        text = state.get("user_input", "").lower()
+        sensitive_markers = ["refund", "compensation", "chargeback", "credit card", "payment dispute"]
+        return {"guardrail_sensitive": any(marker in text for marker in sensitive_markers)}
+
+    def classify_intent(self, state: AssistState) -> AssistState:
+        text = state.get("user_input", "").lower()
+        intent: Intent = "general"
+        if any(keyword in text for keyword in ["return", "refund", "exchange"]):
+            intent = "returns"
+        elif any(keyword in text for keyword in ["order", "shipment", "tracking", "delivered"]):
+            intent = "orders"
+        elif any(keyword in text for keyword in ["speaker", "product", "recommend", "bluetooth", "waterproof"]):
+            intent = "catalog"
+        return {"intent": intent}
 
     def retrieve_context(self, state: AssistState) -> AssistState:
         query = state.get("user_input", "")
@@ -41,6 +61,11 @@ class AssistGraphFactory:
         for item in state.get("retrieved_context", []):
             context_lines.append(f"- {item['text']}")
         context_block = "\n".join(context_lines) if context_lines else "- No retrieved evidence."
+        guardrail_note = (
+            "Sensitive support flow detected. Be careful and suggest human review if the context is insufficient."
+            if state.get("guardrail_sensitive")
+            else "No special guardrail flags detected."
+        )
 
         messages = [
             {
@@ -53,6 +78,8 @@ class AssistGraphFactory:
             {
                 "role": "user",
                 "content": (
+                    f"Intent: {state.get('intent', 'general')}\n"
+                    f"Guardrail: {guardrail_note}\n\n"
                     f"User request: {state.get('user_input', '')}\n\n"
                     f"Retrieved context:\n{context_block}"
                 ),

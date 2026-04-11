@@ -24,6 +24,7 @@ class OpenRouterClient:
     async def chat(self, messages: list[dict[str, str]], model: str | None = None) -> ChatResult:
         api_key = get_openrouter_api_key()
         selected_model = model or self._inference.model
+        fallback_models = [item for item in self._inference.fallback_models if item != selected_model]
 
         if not api_key:
             if self._inference.stub_if_missing_api_key:
@@ -42,14 +43,18 @@ class OpenRouterClient:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             "HTTP-Referer": self._config.site_url,
-            "X-Title": self._config.app_name,
+            "X-OpenRouter-Title": self._config.app_name,
         }
-        payload = {
-            "model": selected_model,
+        payload: dict[str, Any] = {
             "messages": messages,
             "temperature": self._inference.temperature,
             "max_tokens": self._inference.max_tokens,
         }
+        if fallback_models:
+            payload["model"] = selected_model
+            payload["models"] = [selected_model, *fallback_models]
+        else:
+            payload["model"] = selected_model
 
         timeout = httpx.Timeout(self._inference.timeout_seconds)
         async with httpx.AsyncClient(base_url=self._config.base_url, timeout=timeout) as client:

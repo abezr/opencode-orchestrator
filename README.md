@@ -7,10 +7,12 @@ POC architecture for an AI application that demonstrates **collaborative autonom
 This repository now includes a first runnable scaffold for the selected Python-first path:
 - FastAPI app entrypoint under `cmd/api/`
 - LangGraph orchestration skeleton under `internal/modules/orchestration/`
-- OpenRouter client wrapper under `internal/platform/openrouter/`
+- OpenRouter client wrapper with documented fallback support under `internal/platform/openrouter/`
 - Qdrant adapter under `internal/platform/qdrant/`
 - `dev-openrouter-free` configuration profile under `config/profiles/`
 - Docker Compose profile under `deploy/compose/`
+- request tracing via `X-Request-ID`
+- `/healthz` and `/readyz` probes
 
 ### Quick start
 
@@ -22,7 +24,14 @@ This repository now includes a first runnable scaffold for the selected Python-f
 docker compose -f deploy/compose/docker-compose.dev-openrouter-free.yml up
 ```
 
-4. Call the API:
+4. Check probes:
+
+```bash
+curl http://localhost:8000/healthz
+curl http://localhost:8000/readyz
+```
+
+5. Call the API:
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/assist \

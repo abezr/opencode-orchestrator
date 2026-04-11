@@ -1,10 +1,16 @@
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Any, Literal, TypedDict
+
+
+Intent = Literal["returns", "orders", "catalog", "general"]
 
 
 class AssistState(TypedDict, total=False):
+    trace_id: str
     user_input: str
+    guardrail_sensitive: bool
+    intent: Intent
     retrieved_context: list[dict[str, Any]]
     response_text: str
     selected_model: str

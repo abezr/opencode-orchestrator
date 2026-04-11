@@ -23,6 +23,7 @@ class AppConfig(BaseModel):
 class InferenceConfig(BaseModel):
     provider: str = "openrouter"
     model: str = "openrouter/free"
+    fallback_models: list[str] = Field(default_factory=list)
     timeout_seconds: int = 30
     max_tokens: int = 512
     temperature: float = 0.2
@@ -58,6 +59,7 @@ class EnvOverrides(BaseSettings):
 
     openrouter_api_key: str | None = None
     openrouter_model: str | None = None
+    openrouter_fallback_models: str | None = None
     openrouter_timeout_seconds: int | None = None
 
     qdrant_url: str | None = None
@@ -72,6 +74,12 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
         else:
             merged[key] = value
     return merged
+
+
+def _parse_csv(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
 
 
 def load_profile_config(profile_name: str | None = None) -> ProfileConfig:
@@ -90,6 +98,8 @@ def load_profile_config(profile_name: str | None = None) -> ProfileConfig:
         config_data["app"]["port"] = env.app_port
     if env.openrouter_model:
         config_data["inference"]["model"] = env.openrouter_model
+    if env.openrouter_fallback_models is not None:
+        config_data["inference"]["fallback_models"] = _parse_csv(env.openrouter_fallback_models)
     if env.openrouter_timeout_seconds is not None:
         config_data["inference"]["timeout_seconds"] = env.openrouter_timeout_seconds
     if env.qdrant_url:
