@@ -28,6 +28,8 @@ class AssistResponse(BaseModel):
     used_stub: bool
     intent: str
     guardrail_sensitive: bool
+    escalated: bool
+    escalation_reason: str | None
     retrieved_context: list[dict]
 
 
@@ -41,7 +43,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="opencode-orchestrator", version="0.1.1", lifespan=lifespan)
+app = FastAPI(title="opencode-orchestrator", version="0.1.2", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -118,5 +120,7 @@ async def assist(request: Request, payload: AssistRequest) -> AssistResponse:
         used_stub=bool(result.get("used_stub", False)),
         intent=result.get("intent", "general"),
         guardrail_sensitive=bool(result.get("guardrail_sensitive", False)),
+        escalated=bool(result.get("escalated", False)),
+        escalation_reason=result.get("escalation_reason"),
         retrieved_context=result.get("retrieved_context", []),
     )

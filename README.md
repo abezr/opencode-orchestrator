@@ -13,6 +13,7 @@ This repository now includes a first runnable scaffold for the selected Python-f
 - Docker Compose profile under `deploy/compose/`
 - request tracing via `X-Request-ID`
 - `/healthz` and `/readyz` probes
+- one deterministic escalation branch for sensitive flows
 
 ### Quick start
 
@@ -40,6 +41,8 @@ curl -X POST http://localhost:8000/api/v1/assist \
 ```
 
 If `OPENROUTER_API_KEY` is not set, the scaffold still runs in **stub mode** so the orchestration path can be exercised without paid model access.
+
+Sensitive flows such as refund/payment-dispute requests now have a **deterministic escalation path** that short-circuits generation and returns a human-review response.
 
 ## Repository Guide
 

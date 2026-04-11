@@ -11,6 +11,8 @@ class AssistState(TypedDict, total=False):
     user_input: str
     guardrail_sensitive: bool
     intent: Intent
+    escalated: bool
+    escalation_reason: str
     retrieved_context: list[dict[str, Any]]
     response_text: str
     selected_model: str
