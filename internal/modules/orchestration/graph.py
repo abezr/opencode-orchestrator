@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from typing import Any
+
 from langgraph.graph import END, START, StateGraph
 
 from internal.modules.orchestration.state import AssistState, Intent
-from internal.platform.events.operator_tasks import InMemoryOperatorTaskQueue
 from internal.platform.openrouter.client import OpenRouterClient
 from internal.platform.qdrant.adapter import QdrantAdapter
 
@@ -13,7 +14,7 @@ class AssistGraphFactory:
         self,
         openrouter: OpenRouterClient,
         qdrant: QdrantAdapter,
-        operator_tasks: InMemoryOperatorTaskQueue,
+        operator_tasks: Any,
     ) -> None:
         self._openrouter = openrouter
         self._qdrant = qdrant

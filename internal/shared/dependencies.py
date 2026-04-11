@@ -4,7 +4,7 @@ from functools import lru_cache
 
 from internal.modules.orchestration.graph import AssistGraphFactory
 from internal.platform.config import ProfileConfig, load_profile_config
-from internal.platform.events.operator_tasks import InMemoryOperatorTaskQueue
+from internal.platform.events.operator_tasks import PostgresOperatorTaskQueue
 from internal.platform.openrouter.client import OpenRouterClient
 from internal.platform.qdrant.adapter import QdrantAdapter
 
@@ -33,8 +33,11 @@ def get_openrouter_client() -> OpenRouterClient:
 
 
 @lru_cache(maxsize=1)
-def get_operator_task_queue() -> InMemoryOperatorTaskQueue:
-    return InMemoryOperatorTaskQueue()
+def get_operator_task_queue() -> PostgresOperatorTaskQueue:
+    settings = get_settings()
+    queue = PostgresOperatorTaskQueue(settings.postgres.dsn)
+    queue.init_schema()
+    return queue
 
 
 @lru_cache(maxsize=1)

@@ -9,7 +9,7 @@ This repository now includes a first runnable scaffold for the selected Python-f
 - LangGraph orchestration skeleton under `internal/modules/orchestration/`
 - OpenRouter client wrapper with documented fallback support under `internal/platform/openrouter/`
 - Qdrant adapter under `internal/platform/qdrant/`
-- in-memory operator task outbox under `internal/platform/events/`
+- PostgreSQL-backed operator task outbox under `internal/platform/events/`
 - `dev-openrouter-free` configuration profile under `config/profiles/`
 - Docker Compose profile under `deploy/compose/`
 - request tracing via `X-Request-ID`
@@ -20,7 +20,7 @@ This repository now includes a first runnable scaffold for the selected Python-f
 
 1. Copy `.env.example` to `.env`
 2. Set `OPENROUTER_API_KEY` if you want live OpenRouter responses
-3. Start Qdrant and the API:
+3. Start Postgres, Qdrant, and the API:
 
 ```bash
 docker compose -f deploy/compose/docker-compose.dev-openrouter-free.yml up
@@ -49,7 +49,7 @@ curl http://localhost:8000/internal/escalations
 
 If `OPENROUTER_API_KEY` is not set, the scaffold still runs in stub mode so the orchestration path can be exercised without paid model access.
 
-Sensitive flows now use a deterministic escalation path that ends generation early and enqueues an operator task payload for follow-up.
+Sensitive flows now use a deterministic escalation path that ends generation early and stores an operator task in PostgreSQL for follow-up.
 
 ## Repository Guide
 

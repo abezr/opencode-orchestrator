@@ -26,3 +26,6 @@ qdrant:
   vector_size: 16
   enabled: true
   bootstrap_demo_data: true
+
+postgres:
+  dsn: postgresql://app:app@postgres:5432/opencode

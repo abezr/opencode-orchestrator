@@ -43,14 +43,19 @@ class AssistResponse(BaseModel):
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     qdrant = get_qdrant_adapter()
+    queue = get_operator_task_queue()
     try:
         qdrant.bootstrap_demo_data()
     except Exception:
         logger.exception("Failed to bootstrap demo data")
+    try:
+        queue.init_schema()
+    except Exception:
+        logger.exception("Failed to initialize operator task schema")
     yield
 
 
-app = FastAPI(title="opencode-orchestrator", version="0.1.3", lifespan=lifespan)
+app = FastAPI(title="opencode-orchestrator", version="0.1.4", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -85,9 +90,11 @@ async def request_context_middleware(request: Request, call_next):
 def healthz() -> dict:
     settings = get_settings()
     qdrant = get_qdrant_adapter()
+    queue = get_operator_task_queue()
     return {
         "status": "ok",
         "profile": settings.app.env,
+        "postgres_reachable": queue.ping(),
         "qdrant_enabled": settings.qdrant.enabled,
         "qdrant_reachable": qdrant.ping() if settings.qdrant.enabled else False,
         "model": settings.inference.model,
@@ -99,7 +106,15 @@ def healthz() -> dict:
 def readyz() -> Response | dict:
     settings = get_settings()
     qdrant = get_qdrant_adapter()
+    queue = get_operator_task_queue()
     qdrant_ready = (not settings.qdrant.enabled) or qdrant.ping()
+    postgres_ready = queue.ping()
+    if not postgres_ready:
+        return Response(
+            content='{"status":"not_ready","reason":"postgres_unreachable"}',
+            media_type="application/json",
+            status_code=503,
+        )
     if not qdrant_ready:
         return Response(
             content='{"status":"not_ready","reason":"qdrant_unreachable"}',
@@ -110,6 +125,7 @@ def readyz() -> Response | dict:
     return {
         "status": "ready",
         "mode": "live" if not settings.inference.stub_if_missing_api_key else "live-or-stub",
+        "postgres_reachable": postgres_ready,
         "model": settings.inference.model,
         "fallback_models": settings.inference.fallback_models,
     }
