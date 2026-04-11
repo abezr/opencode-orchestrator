@@ -1,0 +1,104 @@
+from __future__ import annotations
+
+import os
+from pathlib import Path
+from typing import Any
+
+import yaml
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+ROOT_DIR = Path(__file__).resolve().parents[3]
+CONFIG_DIR = ROOT_DIR / "config" / "profiles"
+
+
+class AppConfig(BaseModel):
+    name: str = "opencode-orchestrator"
+    env: str = "dev"
+    host: str = "0.0.0.0"
+    port: int = 8000
+
+
+class InferenceConfig(BaseModel):
+    provider: str = "openrouter"
+    model: str = "openrouter/free"
+    timeout_seconds: int = 30
+    max_tokens: int = 512
+    temperature: float = 0.2
+    stub_if_missing_api_key: bool = True
+
+
+class OpenRouterConfig(BaseModel):
+    base_url: str = "https://openrouter.ai/api/v1"
+    app_name: str = "opencode-orchestrator"
+    site_url: str = "http://localhost:8000"
+
+
+class QdrantConfig(BaseModel):
+    url: str = "http://localhost:6333"
+    collection_name: str = "knowledge_snippets"
+    vector_size: int = 16
+    enabled: bool = True
+    bootstrap_demo_data: bool = True
+
+
+class ProfileConfig(BaseModel):
+    app: AppConfig = Field(default_factory=AppConfig)
+    inference: InferenceConfig = Field(default_factory=InferenceConfig)
+    openrouter: OpenRouterConfig = Field(default_factory=OpenRouterConfig)
+    qdrant: QdrantConfig = Field(default_factory=QdrantConfig)
+
+
+class EnvOverrides(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    app_profile: str = "dev-openrouter-free"
+    app_port: int | None = None
+
+    openrouter_api_key: str | None = None
+    openrouter_model: str | None = None
+    openrouter_timeout_seconds: int | None = None
+
+    qdrant_url: str | None = None
+    qdrant_collection_name: str | None = None
+
+
+def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def load_profile_config(profile_name: str | None = None) -> ProfileConfig:
+    env = EnvOverrides()
+    selected_profile = profile_name or env.app_profile
+    profile_path = CONFIG_DIR / f"{selected_profile}.yaml"
+
+    raw: dict[str, Any] = {}
+    if profile_path.exists():
+        raw = yaml.safe_load(profile_path.read_text(encoding="utf-8")) or {}
+
+    config_data = ProfileConfig().model_dump()
+    config_data = _deep_merge(config_data, raw)
+
+    if env.app_port is not None:
+        config_data["app"]["port"] = env.app_port
+    if env.openrouter_model:
+        config_data["inference"]["model"] = env.openrouter_model
+    if env.openrouter_timeout_seconds is not None:
+        config_data["inference"]["timeout_seconds"] = env.openrouter_timeout_seconds
+    if env.qdrant_url:
+        config_data["qdrant"]["url"] = env.qdrant_url
+    if env.qdrant_collection_name:
+        config_data["qdrant"]["collection_name"] = env.qdrant_collection_name
+
+    return ProfileConfig.model_validate(config_data)
+
+
+def get_openrouter_api_key() -> str | None:
+    return os.getenv("OPENROUTER_API_KEY")
