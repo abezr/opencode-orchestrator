@@ -3,14 +3,21 @@ from __future__ import annotations
 from langgraph.graph import END, START, StateGraph
 
 from internal.modules.orchestration.state import AssistState, Intent
+from internal.platform.events.operator_tasks import InMemoryOperatorTaskQueue
 from internal.platform.openrouter.client import OpenRouterClient
 from internal.platform.qdrant.adapter import QdrantAdapter
 
 
 class AssistGraphFactory:
-    def __init__(self, openrouter: OpenRouterClient, qdrant: QdrantAdapter) -> None:
+    def __init__(
+        self,
+        openrouter: OpenRouterClient,
+        qdrant: QdrantAdapter,
+        operator_tasks: InMemoryOperatorTaskQueue,
+    ) -> None:
         self._openrouter = openrouter
         self._qdrant = qdrant
+        self._operator_tasks = operator_tasks
 
     def build(self):
         builder = StateGraph(AssistState)
@@ -58,9 +65,21 @@ class AssistGraphFactory:
     def deterministic_escalation(self, state: AssistState) -> AssistState:
         reason = "Sensitive support flow detected; routing to human review instead of autonomous generation."
         answer = "Your request needs human review before I can answer safely. I’m escalating it to a support specialist now."
+        operator_task = self._operator_tasks.enqueue(
+            trace_id=state.get("trace_id", ""),
+            kind="support_review",
+            priority="high",
+            reason=reason,
+            user_input=state.get("user_input", ""),
+            intent=state.get("intent", "general"),
+            payload={
+                "guardrail_sensitive": bool(state.get("guardrail_sensitive", False)),
+            },
+        )
         return {
             "escalated": True,
             "escalation_reason": reason,
+            "operator_task": operator_task.to_dict(),
             "response_text": answer,
             "selected_model": "deterministic/escalation",
             "used_stub": False,
@@ -115,6 +134,7 @@ class AssistGraphFactory:
         return {
             "escalated": False,
             "escalation_reason": "",
+            "operator_task": {},
             "response_text": result.content,
             "selected_model": result.model,
             "used_stub": result.used_stub,

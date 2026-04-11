@@ -13,6 +13,7 @@ class AssistState(TypedDict, total=False):
     intent: Intent
     escalated: bool
     escalation_reason: str
+    operator_task: dict[str, Any]
     retrieved_context: list[dict[str, Any]]
     response_text: str
     selected_model: str

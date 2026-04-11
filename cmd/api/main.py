@@ -4,12 +4,18 @@ import logging
 import time
 import uuid
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from starlette.responses import Response
 
-from internal.shared.dependencies import get_assist_graph, get_qdrant_adapter, get_settings
+from internal.shared.dependencies import (
+    get_assist_graph,
+    get_operator_task_queue,
+    get_qdrant_adapter,
+    get_settings,
+)
 
 
 logger = logging.getLogger("opencode.api")
@@ -30,6 +36,7 @@ class AssistResponse(BaseModel):
     guardrail_sensitive: bool
     escalated: bool
     escalation_reason: str | None
+    operator_task: dict[str, Any] | None
     retrieved_context: list[dict]
 
 
@@ -43,7 +50,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="opencode-orchestrator", version="0.1.2", lifespan=lifespan)
+app = FastAPI(title="opencode-orchestrator", version="0.1.3", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -108,11 +115,18 @@ def readyz() -> Response | dict:
     }
 
 
+@app.get("/internal/escalations")
+def list_escalations(limit: int = 20) -> dict:
+    queue = get_operator_task_queue()
+    return {"items": queue.list_tasks(limit=limit)}
+
+
 @app.post("/api/v1/assist", response_model=AssistResponse)
 async def assist(request: Request, payload: AssistRequest) -> AssistResponse:
     graph = get_assist_graph()
     trace_id = request.state.trace_id
     result = await graph.ainvoke({"user_input": payload.message, "trace_id": trace_id})
+    operator_task = result.get("operator_task") or None
     return AssistResponse(
         trace_id=trace_id,
         answer=result.get("response_text", ""),
@@ -122,5 +136,6 @@ async def assist(request: Request, payload: AssistRequest) -> AssistResponse:
         guardrail_sensitive=bool(result.get("guardrail_sensitive", False)),
         escalated=bool(result.get("escalated", False)),
         escalation_reason=result.get("escalation_reason"),
+        operator_task=operator_task,
         retrieved_context=result.get("retrieved_context", []),
     )

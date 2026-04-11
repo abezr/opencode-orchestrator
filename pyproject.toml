@@ -27,4 +27,16 @@ dev = [
 
 [tool.setuptools]
 include-package-data = true
-packages = ["cmd", "cmd.api", "internal", "internal.modules", "internal.modules.orchestration", "internal.platform", "internal.platform.openrouter", "internal.platform.qdrant", "internal.platform.embeddings", "internal.shared"]
+packages = [
+  "cmd",
+  "cmd.api",
+  "internal",
+  "internal.modules",
+  "internal.modules.orchestration",
+  "internal.platform",
+  "internal.platform.embeddings",
+  "internal.platform.events",
+  "internal.platform.openrouter",
+  "internal.platform.qdrant",
+  "internal.shared"
+]

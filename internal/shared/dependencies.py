@@ -4,6 +4,7 @@ from functools import lru_cache
 
 from internal.modules.orchestration.graph import AssistGraphFactory
 from internal.platform.config import ProfileConfig, load_profile_config
+from internal.platform.events.operator_tasks import InMemoryOperatorTaskQueue
 from internal.platform.openrouter.client import OpenRouterClient
 from internal.platform.qdrant.adapter import QdrantAdapter
 
@@ -32,8 +33,14 @@ def get_openrouter_client() -> OpenRouterClient:
 
 
 @lru_cache(maxsize=1)
+def get_operator_task_queue() -> InMemoryOperatorTaskQueue:
+    return InMemoryOperatorTaskQueue()
+
+
+@lru_cache(maxsize=1)
 def get_assist_graph():
     return AssistGraphFactory(
         openrouter=get_openrouter_client(),
         qdrant=get_qdrant_adapter(),
+        operator_tasks=get_operator_task_queue(),
     ).build()

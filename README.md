@@ -1,6 +1,6 @@
 # E-commerce AI Orchestration POC — Modular Monolith (Python + FastAPI + Provider Abstraction)
 
-POC architecture for an AI application that demonstrates **collaborative autonomous agent orchestration** for an e-commerce platform while fitting into an existing microservice ecosystem.
+POC architecture for an AI application that demonstrates collaborative autonomous agent orchestration for an e-commerce platform while fitting into an existing microservice ecosystem.
 
 ## Runnable scaffold
 
@@ -9,6 +9,7 @@ This repository now includes a first runnable scaffold for the selected Python-f
 - LangGraph orchestration skeleton under `internal/modules/orchestration/`
 - OpenRouter client wrapper with documented fallback support under `internal/platform/openrouter/`
 - Qdrant adapter under `internal/platform/qdrant/`
+- in-memory operator task outbox under `internal/platform/events/`
 - `dev-openrouter-free` configuration profile under `config/profiles/`
 - Docker Compose profile under `deploy/compose/`
 - request tracing via `X-Request-ID`
@@ -40,9 +41,15 @@ curl -X POST http://localhost:8000/api/v1/assist \
   -d '{"message":"Can I return a damaged speaker after 30 days?"}'
 ```
 
-If `OPENROUTER_API_KEY` is not set, the scaffold still runs in **stub mode** so the orchestration path can be exercised without paid model access.
+6. Inspect queued escalation tasks:
 
-Sensitive flows such as refund/payment-dispute requests now have a **deterministic escalation path** that short-circuits generation and returns a human-review response.
+```bash
+curl http://localhost:8000/internal/escalations
+```
+
+If `OPENROUTER_API_KEY` is not set, the scaffold still runs in stub mode so the orchestration path can be exercised without paid model access.
+
+Sensitive flows now use a deterministic escalation path that ends generation early and enqueues an operator task payload for follow-up.
 
 ## Repository Guide
 
