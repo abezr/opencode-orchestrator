@@ -1,0 +1,1 @@
+# Bedrock demo entrypoint package

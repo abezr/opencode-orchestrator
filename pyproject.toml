@@ -9,6 +9,7 @@ description = "Runnable scaffold for a LangGraph + OpenRouter + Qdrant e-commerc
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+  "boto3>=1.42.0",
   "fastapi>=0.115.0",
   "uvicorn[standard]>=0.30.0",
   "httpx>=0.27.0",
@@ -32,12 +33,14 @@ packages = [
   "cmd",
   "cmd.api",
   "cmd.agentcore_mock",
+  "cmd.bedrock_demo",
   "internal",
   "internal.modules",
   "internal.modules.orchestration",
   "internal.modules.support",
   "internal.platform",
   "internal.platform.agentcore",
+  "internal.platform.bedrock",
   "internal.platform.embeddings",
   "internal.platform.events",
   "internal.platform.openrouter",
