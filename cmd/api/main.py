@@ -15,6 +15,7 @@ from internal.shared.dependencies import (
     get_operator_task_queue,
     get_qdrant_adapter,
     get_settings,
+    get_support_action_service,
 )
 
 
@@ -40,6 +41,21 @@ class AssistResponse(BaseModel):
     retrieved_context: list[dict]
 
 
+class RefundReviewRequest(BaseModel):
+    order_id: str
+    customer_message: str
+    requested_amount: float | None = None
+
+
+class RefundReviewResponse(BaseModel):
+    trace_id: str
+    status: str
+    action_name: str
+    message: str
+    governance: dict[str, Any]
+    operator_task: dict[str, Any] | None
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     qdrant = get_qdrant_adapter()
@@ -55,7 +71,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="opencode-orchestrator", version="0.1.4", lifespan=lifespan)
+app = FastAPI(title="opencode-orchestrator", version="0.1.5", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -97,6 +113,9 @@ def healthz() -> dict:
         "postgres_reachable": queue.ping(),
         "qdrant_enabled": settings.qdrant.enabled,
         "qdrant_reachable": qdrant.ping() if settings.qdrant.enabled else False,
+        "agentcore_enabled": settings.agentcore.enabled,
+        "agentcore_gateway_name": settings.agentcore.gateway_name,
+        "agentcore_policy_name": settings.agentcore.policy_name,
         "model": settings.inference.model,
         "fallback_models": settings.inference.fallback_models,
     }
@@ -126,6 +145,9 @@ def readyz() -> Response | dict:
         "status": "ready",
         "mode": "live" if not settings.inference.stub_if_missing_api_key else "live-or-stub",
         "postgres_reachable": postgres_ready,
+        "agentcore_enabled": settings.agentcore.enabled,
+        "agentcore_gateway_name": settings.agentcore.gateway_name,
+        "agentcore_policy_name": settings.agentcore.policy_name,
         "model": settings.inference.model,
         "fallback_models": settings.inference.fallback_models,
     }
@@ -135,6 +157,31 @@ def readyz() -> Response | dict:
 def list_escalations(limit: int = 20) -> dict:
     queue = get_operator_task_queue()
     return {"items": queue.list_tasks(limit=limit)}
+
+
+@app.get("/internal/agentcore")
+def agentcore_config() -> dict:
+    settings = get_settings()
+    return {
+        "enabled": settings.agentcore.enabled,
+        "gateway_name": settings.agentcore.gateway_name,
+        "policy_name": settings.agentcore.policy_name,
+        "approval_required_actions": settings.agentcore.approval_required_actions,
+        "blocked_actions": settings.agentcore.blocked_actions,
+    }
+
+
+@app.post("/api/v1/support/refund-review", response_model=RefundReviewResponse)
+def refund_review(request: Request, payload: RefundReviewRequest) -> RefundReviewResponse:
+    service = get_support_action_service()
+    trace_id = request.state.trace_id
+    result = service.request_refund_review(
+        trace_id=trace_id,
+        order_id=payload.order_id,
+        customer_message=payload.customer_message,
+        requested_amount=payload.requested_amount,
+    )
+    return RefundReviewResponse(trace_id=trace_id, **result.to_dict())
 
 
 @app.post("/api/v1/assist", response_model=AssistResponse)

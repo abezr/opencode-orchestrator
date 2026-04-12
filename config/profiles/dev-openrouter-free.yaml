@@ -29,3 +29,12 @@ qdrant:
 
 postgres:
   dsn: postgresql://app:app@postgres:5432/opencode
+
+agentcore:
+  enabled: false
+  gateway_name: support-gateway
+  policy_name: refund-approval-policy
+  approval_required_actions:
+    - support.request_refund
+    - support.issue_compensation
+  blocked_actions: []

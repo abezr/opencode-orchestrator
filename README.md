@@ -10,6 +10,8 @@ This repository now includes a first runnable scaffold for the selected Python-f
 - OpenRouter client wrapper with documented fallback support under `internal/platform/openrouter/`
 - Qdrant adapter under `internal/platform/qdrant/`
 - PostgreSQL-backed operator task outbox under `internal/platform/events/`
+- config-backed AgentCore Gateway/Policy boundary under `internal/platform/agentcore/`
+- sample approval-required support action path under `internal/modules/support/`
 - `dev-openrouter-free` configuration profile under `config/profiles/`
 - Docker Compose profile under `deploy/compose/`
 - request tracing via `X-Request-ID`
@@ -39,9 +41,10 @@ docker compose -f deploy/compose/docker-compose.dev-openrouter-free.yml up
 ```bash
 curl http://localhost:8000/healthz
 curl http://localhost:8000/readyz
+curl http://localhost:8000/internal/agentcore
 ```
 
-5. Call the API:
+5. Call the core assistant API:
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/assist \
@@ -49,7 +52,15 @@ curl -X POST http://localhost:8000/api/v1/assist \
   -d '{"message":"Can I return a damaged speaker after 30 days?"}'
 ```
 
-6. Inspect queued escalation tasks:
+6. Call the sample approval-required support action path:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/support/refund-review \
+  -H "Content-Type: application/json" \
+  -d '{"order_id":"ORD-123","customer_message":"I want a refund for a damaged item","requested_amount":49.99}'
+```
+
+7. Inspect queued escalation tasks:
 
 ```bash
 curl http://localhost:8000/internal/escalations
@@ -58,6 +69,7 @@ curl http://localhost:8000/internal/escalations
 If `OPENROUTER_API_KEY` is not set, the scaffold still runs in stub mode so the orchestration path can be exercised without paid model access.
 
 Sensitive flows now use a deterministic escalation path that ends generation early and stores an operator task in PostgreSQL for follow-up.
+The sample refund-review endpoint uses the config-backed AgentCore boundary and, by default, queues approval-required refund actions instead of executing any real side effect.
 
 ## Repository Guide
 

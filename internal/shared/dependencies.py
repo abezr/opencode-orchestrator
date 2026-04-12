@@ -3,6 +3,8 @@ from __future__ import annotations
 from functools import lru_cache
 
 from internal.modules.orchestration.graph import AssistGraphFactory
+from internal.modules.support.actions import SupportActionService
+from internal.platform.agentcore.boundary import ConfigBackedAgentCoreAdapter
 from internal.platform.config import ProfileConfig, load_profile_config
 from internal.platform.events.operator_tasks import PostgresOperatorTaskQueue
 from internal.platform.openrouter.client import OpenRouterClient
@@ -38,6 +40,20 @@ def get_operator_task_queue() -> PostgresOperatorTaskQueue:
     queue = PostgresOperatorTaskQueue(settings.postgres.dsn)
     queue.init_schema()
     return queue
+
+
+@lru_cache(maxsize=1)
+def get_agentcore_adapter() -> ConfigBackedAgentCoreAdapter:
+    settings = get_settings()
+    return ConfigBackedAgentCoreAdapter(settings.agentcore)
+
+
+@lru_cache(maxsize=1)
+def get_support_action_service() -> SupportActionService:
+    return SupportActionService(
+        agentcore=get_agentcore_adapter(),
+        operator_tasks=get_operator_task_queue(),
+    )
 
 
 @lru_cache(maxsize=1)

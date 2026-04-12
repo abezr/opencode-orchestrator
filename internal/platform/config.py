@@ -11,11 +11,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 ROOT_DIR = Path(__file__).resolve().parents[3]
 CONFIG_DIR = ROOT_DIR / "config" / "profiles"
 
+
 class AppConfig(BaseModel):
     name: str = "opencode-orchestrator"
     env: str = "dev"
     host: str = "0.0.0.0"
     port: int = 8000
+
 
 class InferenceConfig(BaseModel):
     provider: str = "openrouter"
@@ -26,10 +28,12 @@ class InferenceConfig(BaseModel):
     temperature: float = 0.2
     stub_if_missing_api_key: bool = True
 
+
 class OpenRouterConfig(BaseModel):
     base_url: str = "https://openrouter.ai/api/v1"
     app_name: str = "opencode-orchestrator"
     site_url: str = "http://localhost:8000"
+
 
 class QdrantConfig(BaseModel):
     url: str = "http://localhost:6333"
@@ -38,8 +42,18 @@ class QdrantConfig(BaseModel):
     enabled: bool = True
     bootstrap_demo_data: bool = True
 
+
 class PostgresConfig(BaseModel):
     dsn: str = "postgresql://app:app@localhost:5432/opencode"
+
+
+class AgentCoreConfig(BaseModel):
+    enabled: bool = False
+    gateway_name: str = "support-gateway"
+    policy_name: str = "refund-approval-policy"
+    approval_required_actions: list[str] = Field(default_factory=lambda: ["support.request_refund"])
+    blocked_actions: list[str] = Field(default_factory=list)
+
 
 class ProfileConfig(BaseModel):
     app: AppConfig = Field(default_factory=AppConfig)
@@ -47,9 +61,12 @@ class ProfileConfig(BaseModel):
     openrouter: OpenRouterConfig = Field(default_factory=OpenRouterConfig)
     qdrant: QdrantConfig = Field(default_factory=QdrantConfig)
     postgres: PostgresConfig = Field(default_factory=PostgresConfig)
+    agentcore: AgentCoreConfig = Field(default_factory=AgentCoreConfig)
+
 
 class EnvOverrides(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
     app_profile: str = "dev-openrouter-free"
     app_port: int | None = None
     openrouter_api_key: str | None = None
@@ -59,6 +76,12 @@ class EnvOverrides(BaseSettings):
     qdrant_url: str | None = None
     qdrant_collection_name: str | None = None
     postgres_dsn: str | None = None
+    agentcore_enabled: bool | None = None
+    agentcore_gateway_name: str | None = None
+    agentcore_policy_name: str | None = None
+    agentcore_approval_required_actions: str | None = None
+    agentcore_blocked_actions: str | None = None
+
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     merged = dict(base)
@@ -69,10 +92,12 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
             merged[key] = value
     return merged
 
+
 def _parse_csv(value: str | None) -> list[str]:
     if not value:
         return []
     return [item.strip() for item in value.split(",") if item.strip()]
+
 
 def load_profile_config(profile_name: str | None = None) -> ProfileConfig:
     env = EnvOverrides()
@@ -81,8 +106,10 @@ def load_profile_config(profile_name: str | None = None) -> ProfileConfig:
     raw: dict[str, Any] = {}
     if profile_path.exists():
         raw = yaml.safe_load(profile_path.read_text(encoding="utf-8")) or {}
+
     config_data = ProfileConfig().model_dump()
     config_data = _deep_merge(config_data, raw)
+
     if env.app_port is not None:
         config_data["app"]["port"] = env.app_port
     if env.openrouter_model:
@@ -97,7 +124,19 @@ def load_profile_config(profile_name: str | None = None) -> ProfileConfig:
         config_data["qdrant"]["collection_name"] = env.qdrant_collection_name
     if env.postgres_dsn:
         config_data["postgres"]["dsn"] = env.postgres_dsn
+    if env.agentcore_enabled is not None:
+        config_data["agentcore"]["enabled"] = env.agentcore_enabled
+    if env.agentcore_gateway_name:
+        config_data["agentcore"]["gateway_name"] = env.agentcore_gateway_name
+    if env.agentcore_policy_name:
+        config_data["agentcore"]["policy_name"] = env.agentcore_policy_name
+    if env.agentcore_approval_required_actions is not None:
+        config_data["agentcore"]["approval_required_actions"] = _parse_csv(env.agentcore_approval_required_actions)
+    if env.agentcore_blocked_actions is not None:
+        config_data["agentcore"]["blocked_actions"] = _parse_csv(env.agentcore_blocked_actions)
+
     return ProfileConfig.model_validate(config_data)
+
 
 def get_openrouter_api_key() -> str | None:
     return os.getenv("OPENROUTER_API_KEY")
