@@ -45,15 +45,12 @@ def get_operator_task_queue() -> PostgresOperatorTaskQueue:
 @lru_cache(maxsize=1)
 def get_agentcore_adapter() -> ExternalAgentCoreAdapterStub:
     settings = get_settings()
-    return ExternalAgentCoreAdapterStub(settings.agentcore)
+    return ExternalAgentCoreAdapterStub(settings.agentcore, get_operator_task_queue())
 
 
 @lru_cache(maxsize=1)
 def get_support_action_service() -> SupportActionService:
-    return SupportActionService(
-        agentcore=get_agentcore_adapter(),
-        operator_tasks=get_operator_task_queue(),
-    )
+    return SupportActionService(agentcore=get_agentcore_adapter())
 
 
 @lru_cache(maxsize=1)

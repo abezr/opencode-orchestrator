@@ -10,7 +10,9 @@ from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from starlette.responses import Response
 
+from internal.platform.agentcore.boundary import ToolRegistrationRequest
 from internal.shared.dependencies import (
+    get_agentcore_adapter,
     get_assist_graph,
     get_operator_task_queue,
     get_qdrant_adapter,
@@ -54,12 +56,14 @@ class RefundReviewResponse(BaseModel):
     message: str
     governance: dict[str, Any]
     operator_task: dict[str, Any] | None
+    approval_submission: dict[str, Any] | None
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     qdrant = get_qdrant_adapter()
     queue = get_operator_task_queue()
+    agentcore = get_agentcore_adapter()
     try:
         qdrant.bootstrap_demo_data()
     except Exception:
@@ -68,10 +72,29 @@ async def lifespan(_: FastAPI):
         queue.init_schema()
     except Exception:
         logger.exception("Failed to initialize operator task schema")
+    try:
+        agentcore.register_tool(
+            ToolRegistrationRequest(
+                tool_name="support.request_refund",
+                description="Submit a refund request that may require approval.",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "order_id": {"type": "string"},
+                        "requested_amount": {"type": ["number", "null"]},
+                        "customer_message": {"type": "string"},
+                    },
+                    "required": ["order_id", "customer_message"],
+                },
+                metadata={"module": "support", "kind": "approval_sensitive_action"},
+            )
+        )
+    except Exception:
+        logger.exception("Failed to register AgentCore tool")
     yield
 
 
-app = FastAPI(title="opencode-orchestrator", version="0.1.6", lifespan=lifespan)
+app = FastAPI(title="opencode-orchestrator", version="0.1.7", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -164,6 +187,7 @@ def list_escalations(limit: int = 20) -> dict:
 @app.get("/internal/agentcore")
 def agentcore_config() -> dict:
     settings = get_settings()
+    adapter = get_agentcore_adapter()
     return {
         "enabled": settings.agentcore.enabled,
         "mode": settings.agentcore.mode,
@@ -173,6 +197,7 @@ def agentcore_config() -> dict:
         "policy_name": settings.agentcore.policy_name,
         "approval_required_actions": settings.agentcore.approval_required_actions,
         "blocked_actions": settings.agentcore.blocked_actions,
+        "stub_state": adapter.snapshot_state(),
     }
 
 
