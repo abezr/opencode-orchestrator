@@ -71,7 +71,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="opencode-orchestrator", version="0.1.5", lifespan=lifespan)
+app = FastAPI(title="opencode-orchestrator", version="0.1.6", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -114,6 +114,7 @@ def healthz() -> dict:
         "qdrant_enabled": settings.qdrant.enabled,
         "qdrant_reachable": qdrant.ping() if settings.qdrant.enabled else False,
         "agentcore_enabled": settings.agentcore.enabled,
+        "agentcore_mode": settings.agentcore.mode,
         "agentcore_gateway_name": settings.agentcore.gateway_name,
         "agentcore_policy_name": settings.agentcore.policy_name,
         "model": settings.inference.model,
@@ -146,6 +147,7 @@ def readyz() -> Response | dict:
         "mode": "live" if not settings.inference.stub_if_missing_api_key else "live-or-stub",
         "postgres_reachable": postgres_ready,
         "agentcore_enabled": settings.agentcore.enabled,
+        "agentcore_mode": settings.agentcore.mode,
         "agentcore_gateway_name": settings.agentcore.gateway_name,
         "agentcore_policy_name": settings.agentcore.policy_name,
         "model": settings.inference.model,
@@ -164,6 +166,9 @@ def agentcore_config() -> dict:
     settings = get_settings()
     return {
         "enabled": settings.agentcore.enabled,
+        "mode": settings.agentcore.mode,
+        "base_url": settings.agentcore.base_url,
+        "timeout_seconds": settings.agentcore.timeout_seconds,
         "gateway_name": settings.agentcore.gateway_name,
         "policy_name": settings.agentcore.policy_name,
         "approval_required_actions": settings.agentcore.approval_required_actions,

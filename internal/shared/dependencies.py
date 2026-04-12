@@ -4,7 +4,7 @@ from functools import lru_cache
 
 from internal.modules.orchestration.graph import AssistGraphFactory
 from internal.modules.support.actions import SupportActionService
-from internal.platform.agentcore.boundary import ConfigBackedAgentCoreAdapter
+from internal.platform.agentcore.external_stub import ExternalAgentCoreAdapterStub
 from internal.platform.config import ProfileConfig, load_profile_config
 from internal.platform.events.operator_tasks import PostgresOperatorTaskQueue
 from internal.platform.openrouter.client import OpenRouterClient
@@ -43,9 +43,9 @@ def get_operator_task_queue() -> PostgresOperatorTaskQueue:
 
 
 @lru_cache(maxsize=1)
-def get_agentcore_adapter() -> ConfigBackedAgentCoreAdapter:
+def get_agentcore_adapter() -> ExternalAgentCoreAdapterStub:
     settings = get_settings()
-    return ConfigBackedAgentCoreAdapter(settings.agentcore)
+    return ExternalAgentCoreAdapterStub(settings.agentcore)
 
 
 @lru_cache(maxsize=1)

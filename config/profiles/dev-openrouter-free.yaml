@@ -32,6 +32,9 @@ postgres:
 
 agentcore:
   enabled: false
+  mode: external_stub
+  base_url: http://localhost:9001
+  timeout_seconds: 5
   gateway_name: support-gateway
   policy_name: refund-approval-policy
   approval_required_actions:
