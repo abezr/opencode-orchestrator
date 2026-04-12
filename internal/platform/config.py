@@ -49,6 +49,10 @@ class PostgresConfig(BaseModel):
 
 class AgentCoreConfig(BaseModel):
     enabled: bool = False
+    mode: str = "external_stub"
+    base_url: str = "http://localhost:9001"
+    timeout_seconds: int = 5
+    fallback_to_stub_on_error: bool = True
     gateway_name: str = "support-gateway"
     policy_name: str = "refund-approval-policy"
     approval_required_actions: list[str] = Field(default_factory=lambda: ["support.request_refund"])
@@ -77,6 +81,10 @@ class EnvOverrides(BaseSettings):
     qdrant_collection_name: str | None = None
     postgres_dsn: str | None = None
     agentcore_enabled: bool | None = None
+    agentcore_mode: str | None = None
+    agentcore_base_url: str | None = None
+    agentcore_timeout_seconds: int | None = None
+    agentcore_fallback_to_stub_on_error: bool | None = None
     agentcore_gateway_name: str | None = None
     agentcore_policy_name: str | None = None
     agentcore_approval_required_actions: str | None = None
@@ -126,6 +134,14 @@ def load_profile_config(profile_name: str | None = None) -> ProfileConfig:
         config_data["postgres"]["dsn"] = env.postgres_dsn
     if env.agentcore_enabled is not None:
         config_data["agentcore"]["enabled"] = env.agentcore_enabled
+    if env.agentcore_mode:
+        config_data["agentcore"]["mode"] = env.agentcore_mode
+    if env.agentcore_base_url:
+        config_data["agentcore"]["base_url"] = env.agentcore_base_url
+    if env.agentcore_timeout_seconds is not None:
+        config_data["agentcore"]["timeout_seconds"] = env.agentcore_timeout_seconds
+    if env.agentcore_fallback_to_stub_on_error is not None:
+        config_data["agentcore"]["fallback_to_stub_on_error"] = env.agentcore_fallback_to_stub_on_error
     if env.agentcore_gateway_name:
         config_data["agentcore"]["gateway_name"] = env.agentcore_gateway_name
     if env.agentcore_policy_name:

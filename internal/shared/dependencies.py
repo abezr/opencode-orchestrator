@@ -5,6 +5,7 @@ from functools import lru_cache
 from internal.modules.orchestration.graph import AssistGraphFactory
 from internal.modules.support.actions import SupportActionService
 from internal.platform.agentcore.external_stub import ExternalAgentCoreAdapterStub
+from internal.platform.agentcore.http_client import AgentCoreHttpClientAdapter
 from internal.platform.config import ProfileConfig, load_profile_config
 from internal.platform.events.operator_tasks import PostgresOperatorTaskQueue
 from internal.platform.openrouter.client import OpenRouterClient
@@ -43,9 +44,13 @@ def get_operator_task_queue() -> PostgresOperatorTaskQueue:
 
 
 @lru_cache(maxsize=1)
-def get_agentcore_adapter() -> ExternalAgentCoreAdapterStub:
+def get_agentcore_adapter():
     settings = get_settings()
-    return ExternalAgentCoreAdapterStub(settings.agentcore, get_operator_task_queue())
+    stub = ExternalAgentCoreAdapterStub(settings.agentcore, get_operator_task_queue())
+    if settings.agentcore.mode == "http_client":
+        fallback = stub if settings.agentcore.fallback_to_stub_on_error else None
+        return AgentCoreHttpClientAdapter(settings.agentcore, fallback_adapter=fallback)
+    return stub
 
 
 @lru_cache(maxsize=1)
