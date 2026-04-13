@@ -43,7 +43,9 @@ packages = [
   "internal.platform.bedrock",
   "internal.platform.embeddings",
   "internal.platform.events",
+  "internal.platform.inference",
   "internal.platform.openrouter",
   "internal.platform.qdrant",
+  "internal.platform.retrieval",
   "internal.shared"
 ]

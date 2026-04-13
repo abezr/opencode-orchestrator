@@ -11,11 +11,24 @@ This repository currently includes:
 - LangGraph orchestration skeleton under `internal/modules/orchestration/`
 - OpenRouter client wrapper under `internal/platform/openrouter/`
 - Bedrock adapters under `internal/platform/bedrock/`
+- provider-switch routers under `internal/platform/inference/` and `internal/platform/retrieval/`
 - Qdrant adapter under `internal/platform/qdrant/`
 - PostgreSQL-backed operator task outbox under `internal/platform/events/`
 - AgentCore integration seam under `internal/platform/agentcore/`
 - sample approval-required support action path under `internal/modules/support/`
 - Docker Compose profiles under `deploy/compose/`
+
+## Main app provider switching
+
+The main API now has provider-switched surfaces for generation and retrieval:
+- `POST /api/v1/generate`
+  - providers: `openrouter`, `bedrock_runtime`
+- `POST /api/v1/retrieve`
+  - providers: `qdrant`, `bedrock_knowledge_base`
+- `GET /internal/providers`
+  - shows the currently wired provider surface and Bedrock identifiers
+
+This bridges the Bedrock lane back into the main app without replacing the existing LangGraph/OpenRouter/Qdrant defaults.
 
 ## Bedrock integration status
 
@@ -51,11 +64,29 @@ docker compose -f deploy/compose/docker-compose.dev-bedrock-demo.yml up
 Useful checks:
 
 ```bash
+curl http://localhost:8000/healthz
+curl http://localhost:8000/internal/providers
 curl http://localhost:8010/healthz
 curl http://localhost:8010/internal/bedrock
 ```
 
-Example calls:
+Example main-app generation call:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/generate \
+  -H "Content-Type: application/json" \
+  -d '{"provider":"openrouter","messages":[{"role":"user","content":"Hello"}]}'
+```
+
+Example main-app retrieval call:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/retrieve \
+  -H "Content-Type: application/json" \
+  -d '{"provider":"qdrant","query":"refund policy"}'
+```
+
+Example Bedrock demo calls:
 
 ```bash
 curl -X POST http://localhost:8010/api/v1/bedrock/converse \
