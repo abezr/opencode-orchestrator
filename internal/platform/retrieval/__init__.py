@@ -1,1 +1,0 @@
-# retrieval provider package

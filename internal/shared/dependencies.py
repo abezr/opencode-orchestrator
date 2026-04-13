@@ -102,7 +102,8 @@ def get_retrieval_router() -> RetrievalRouter:
 @lru_cache(maxsize=1)
 def get_assist_graph():
     return AssistGraphFactory(
-        openrouter=get_openrouter_client(),
-        qdrant=get_qdrant_adapter(),
+        settings=get_settings(),
+        generation_router=get_generation_router(),
+        retrieval_router=get_retrieval_router(),
         operator_tasks=get_operator_task_queue(),
     ).build()
